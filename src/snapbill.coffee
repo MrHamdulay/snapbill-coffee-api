@@ -41,12 +41,19 @@ class Snapbill
                     result += data
                 res.on 'end', ->
                     console.log "Server result #{result}"
-                    callback JSON.parse result
+                    data = JSON.parse result
+                    if data.code == 200
+                        callback data, null
+                    else
+                        callback null, data
 
                 if 2 isnt Math.floor res.statusCode
-                    @connectivity_error "Request to #{url} failed with error code #{res.statusCode}"
+                    error_message = "Request to #{url} failed with error code #{res.statusCode}"
+                    callback null, error_message
+                    @connectivity_error error_message
 
-            req.on 'error', (e) => @connectivity_error "Request to #{url} failed. #{e.message}\nStack: #{e.stack}"
+            req.on 'error', (e) =>
+                error_message "Request to #{url} failed. #{e.message}\nStack: #{e.stack}"
             req.write params
             req.end()
 
@@ -85,8 +92,11 @@ class SnapbillObject
         return cache[typeName][objectData.id]
 
     @list: (snapbill, params, callback) ->
-        snapbill.request "POST", "/v1/#{@type}/list", params, (requestData) =>
-            callback (SnapbillObject.create_object snapbill, this, objectData for objectData in requestData['list'])
+        snapbill.request "POST", "/v1/#{@type}/list", params, (requestData, error) =>
+            if error?
+                callback null, error
+            else
+                callback (SnapbillObject.create_object snapbill, this, objectData for objectData in requestData['list']), null
 
 
 class User extends SnapbillObject

@@ -33,8 +33,10 @@ describe "Snapbill py api", ->
        "type": "account",
        "client": null } ] }'
 
+        snapbillMock = new snapbill.Snapbill
         users = null
-        snapbill.User.login snapbillMock, 'yaseen', '', (u) =>
+        snapbill.User.login snapbillMock, 'yaseen', 'a', (u, error) =>
+            expect(error).toBe(null)
             users = u
         waitsFor (=> users?) , "User should be received", 3000
         runs =>
