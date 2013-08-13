@@ -13,7 +13,6 @@ class Snapbill
             request.onload = ->
                 if request.readyState is 4
                     if 2 is Math.floor request.state / 100
-                        console.log request.responseText
                         callback JSON.parse request.responseText
                     else
                         @connectivity_error "Request to #{url} failed with request code #{request.status}"
@@ -33,18 +32,23 @@ class Snapbill
                 headers:
                     "content-type": "application/x-form-urlencoded"
                     "Accept": "application/json"
+                    "Content-Length": params.length if params?
                 auth: @username + ':' + @password
 
             req = http.request http_options, (res) =>
+                result = ''
                 res.on 'data', (data) ->
-                    callback JSON.parse data
-                if 2 is not Math.floor res.statusCode
+                    result += data
+                res.on 'end', ->
+                    console.log "Server result #{result}"
+                    callback JSON.parse result
+
+                if 2 isnt Math.floor res.statusCode
                     @connectivity_error "Request to #{url} failed with error code #{res.statusCode}"
 
             req.on 'error', (e) => @connectivity_error "Request to #{url} failed. #{e.message}\nStack: #{e.stack}"
             req.write params
             req.end()
-            console.log 'request made'
 
 
 
@@ -55,7 +59,7 @@ class Snapbill
             (k+"="+v for k, v of params).join('&')
 
     connectivity_error: (message) ->
-        console.log message
+        console.log "ERROR: #{message}"
 
 class SnapbillObject
     constructor: (snapbill, objectData = {}) ->
@@ -66,27 +70,42 @@ class SnapbillObject
         cache = snapbill.object_cache
         typeName = type.type
 
-        cache[typeName] = {} if not cache[typeName]?
-        cache[typeName][objectData.id] = new type snapbill, objectData if not cache[typeName][objectData.id]?
+        cache[typeName] = {} unless cache[typeName]?
+        if not cache[typeName][objectData.id]?
+            obj = new type.constructor snapbill, objectData
+
+            for key, value of objectData
+                if obj[key]? and obj[key] isnt value
+                    throw new Error "Received data does not match existing values"
+                if key isnt 'depth'
+                    obj[key] = value
+
+            cache[typeName][objectData.id] = obj
 
         return cache[typeName][objectData.id]
 
     @list: (snapbill, params, callback) ->
-        snapbill.request "POST", "/v1/#{@type}/list", params, (requestData) ->
+        snapbill.request "POST", "/v1/#{@type}/list", params, (requestData) =>
             callback (SnapbillObject.create_object snapbill, this, objectData for objectData in requestData['list'])
 
 
 class User extends SnapbillObject
-    @type = 'user'
+    @type: 'user'
 
-    @login: (snapbill, username, password) ->
+    @login: (snapbill, username, password, loginCallback) ->
         snapbill.username = username
         snapbill.password = password
 
         User.list(snapbill, {
                 "username": username,
                 "password": password
-            },
-            (resultData) ->
-                console.log resultData)
+            }, loginCallback)
         return
+
+User.prototype.constructor = User
+User.constructor = User
+
+if exports?
+    exports.User = User
+    exports.Snapbill = Snapbill
+    exports.SnapbillObject = SnapbillObject
