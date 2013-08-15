@@ -115,7 +115,7 @@ class User extends SnapbillObject
 User.prototype.constructor = User
 User.constructor = User
 
-if exports?
-    exports.User = User
-    exports.Snapbill = Snapbill
-    exports.SnapbillObject = SnapbillObject
+global = exports ? window
+global.User = User
+global.Snapbill = Snapbill
+global.SnapbillObject = SnapbillObject

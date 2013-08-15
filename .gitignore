@@ -5,8 +5,4 @@ bin-release/
 
 # Other files and folders
 .settings/
-
-# Project files, i.e. `.project`, `.actionScriptProperties` and `.flexProperties`
-# should NOT be excluded as they contain compiler settings and other important
-# information for Eclipse / Flash Builder.
->>>>>>> 5b9201001a7623af2390a9ac85a53333d6ca8ad7
+*.js
