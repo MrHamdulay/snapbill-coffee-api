@@ -4,23 +4,30 @@ class Snapbill
 
     constructor: ->
         @object_cache = {}
-        @base_url = "api.snapbill.com"
+        @base_url = "https://api.snapbill.com"
+
+    connectivity_error: (error) ->
+        console.log "EPIC FAIL #{error}"
 
     request: (type, url, params, callback) ->
         params = Snapbill.encode_params params
         if typeof XMLHttpRequest != 'undefined'
             request = new XMLHttpRequest()
-            request.onload = ->
+            request.onload = =>
                 if request.readyState is 4
-                    if 2 is Math.floor request.state / 100
+                    if 2 is Math.floor request.status / 100
                         callback JSON.parse request.responseText
                     else
-                        @connectivity_error "Request to #{url} failed with request code #{request.status}"
+                        error = "Request to #{url} failed with request code #{request.status}"
+                        callback null, error
+                        @connectivity_error error
+                    return true
 
-            request.onerror = ->
+            request.onerror = =>
+                callback null, "a network error occured"
                 @connectivity_error "A network error occured"
 
-            request.open type, base_url + url
+            request.open type, @base_url + url, true, @username, @password
             request.send params
         else
             http = require 'http'
@@ -109,13 +116,23 @@ class User extends SnapbillObject
         User.list(snapbill, {
                 "username": username,
                 "password": password
-            }, loginCallback)
+            }, (response, error) ->
+                if error?
+                    snapbill.username = null
+                    snapbill.password = null
+                loginCallback response, error
+                )
         return
 
 User.prototype.constructor = User
 User.constructor = User
 
-global = exports ? window
-global.User = User
-global.Snapbill = Snapbill
-global.SnapbillObject = SnapbillObject
+snapbill =
+    User: User
+    Snapbill: Snapbill
+    SnapbillObject: SnapbillObject
+
+if exports?
+    exports = snapbill
+else
+    window.snapbill = snapbill
