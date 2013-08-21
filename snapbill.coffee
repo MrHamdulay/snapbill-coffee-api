@@ -100,12 +100,15 @@ class SnapbillObject
 
         return cache[typeName][objectData.id]
 
-    @load: (snapbill, filters, callback) ->
-        console.log snapbill
-        cached = snapbill.object_cache[@type][filters.id] if filters.id?
-        callback cached, null if cached?
+    @load: (snapbill, id, callback) ->
+        if id?.id?
+            id = id.id
+        if snapbill.object_cache[@type]?
+            cached = snapbill.object_cache[@type][id]
+            callback cached, null if cached?
+            return
 
-        snapbill.request "POST", "/v1/#{@type}/get", filters, (requestData, error) =>
+        snapbill.request "POST", "/v1/#{@type}/#{id}/get", {}, (requestData, error) =>
             if error?
                 callback null, error
             else
@@ -147,10 +150,22 @@ class Client extends SnapbillObject
 Client.prototype.constructor = Client
 Client.constructor = Client
 
+class Invoice extends SnapbillObject
+    @type: 'invoice'
+
+    @list: (snapbill, client, params, callback) ->
+        params ?= {}
+        params.client_id = client.id
+        super snapbill, params, callback
+
+Invoice.prototype.constructor = Invoice
+Invoice.constructor = Invoice
+
 
 snapbill =
     User           :User
     Client         :Client
+    Invoice        :Invoice
     Snapbill       :Snapbill
     SnapbillObject :SnapbillObject
 
